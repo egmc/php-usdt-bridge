@@ -115,6 +115,22 @@ probe process("/path/to/usdt_bridge.so").mark("call")
 sudo stap trace.stp -c "php your_script.php"
 ```
 
+## bpftrace で観測する
+
+`trace.bt` を同梱しています。SystemTap の `stap` の代わりに `bpftrace` でも
+同じUSDTプローブを観測できます。
+
+```sh
+sudo bpftrace trace.bt "$(pwd)/modules/usdt_bridge.so"
+```
+
+別ターミナルで拡張を読み込んだPHPを実行すると、メッセージ・ファイル名・行
+番号・PID・コマンド名が出力されます。
+
+```sh
+php -d extension=./modules/usdt_bridge.so -r 'call_usdt_bridge("hello");'
+```
+
 ## アンインストール
 
 ```sh
