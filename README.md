@@ -90,38 +90,10 @@ call_usdt_bridge("hello from php");
 2. このスクリプトのファイルパス
 3. `call_usdt_bridge(...)` が呼ばれた行番号
 
-## SystemTap で観測する
-
-拡張が読み込まれた PHP プロセス（の実体である `usdt_bridge.so`）に対して
-プローブが定義されているか確認します。
-
-```sh
-stap -l 'process("/path/to/usdt_bridge.so").mark("call")'
-```
-
-`.so` のパスは `php -i | grep extension_dir` などで確認してください。
-
-以下は発火時に引数を出力する簡単な `.stp` スクリプト例です。
-
-```stap
-probe process("/path/to/usdt_bridge.so").mark("call")
-{
-    printf("[usdt_bridge:call] message=%s file=%s line=%d\n",
-           user_string($arg1), user_string($arg2), $arg3)
-}
-```
-
-```sh
-sudo stap trace.stp -c "php your_script.php"
-```
-
 ## bpftrace で観測する
 
-`trace.bt` を同梱しています。SystemTap の `stap` の代わりに `bpftrace` でも
-同じUSDTプローブを観測できます。
-
 ```sh
-sudo bpftrace trace.bt "$(pwd)/modules/usdt_bridge.so"
+sudo bpftrace -e 'usdt:./modules/usdt_bridge.so:usdt_bridge:call {printf("[%s] pid=%-6d comm=%-16s message=%s file=%s line=%d\n", strftime("%H:%M:%S", nsecs), pid, comm, str(arg0), str(arg1), arg2); }'
 ```
 
 別ターミナルで拡張を読み込んだPHPを実行すると、メッセージ・ファイル名・行
@@ -130,13 +102,3 @@ sudo bpftrace trace.bt "$(pwd)/modules/usdt_bridge.so"
 ```sh
 php -d extension=./modules/usdt_bridge.so -r 'call_usdt_bridge("hello");'
 ```
-
-## アンインストール
-
-```sh
-sudo pecl uninstall usdt_bridge 2>/dev/null || true
-sudo rm -f "$(php-config --extension-dir)/usdt_bridge.so"
-```
-
-そのうえで `php.ini` から `extension=usdt_bridge.so` の行を削除してくださ
-い。
